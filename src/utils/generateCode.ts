@@ -1,3 +1,5 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
 const SYSTEM_PROMPT = `You are an expert web developer. Generate clean, responsive HTML using Tailwind CSS.
 Follow these rules strictly:
 - Return ONLY the HTML code that goes inside the body tag
@@ -7,7 +9,6 @@ Follow these rules strictly:
 - Include necessary JavaScript functionality inline
 - Use Tailwind CSS classes for all styling
 - Ensure the code is complete and functional
-- Ensure complete compatibility with all devices and browsers
 
 Example format of your response:
 <div class="container mx-auto p-4">
@@ -15,40 +16,24 @@ Example format of your response:
 </div>`
 
 export async function generateCode(prompt: string): Promise<string> {
-  if (!process.env.NEXT_PUBLIC_OPENAI_KEY) {
-    throw new Error('OpenAI API key is not configured')
+  if (!process.env.NEXT_PUBLIC_GEMINI_KEY) {
+    throw new Error('Gemini API key is not configured')
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { 
-            role: "user", 
-            content: `Generate only the HTML code for: ${prompt}. Do not include any explanations or comments.`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      })
-    })
+    const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-    if (!response.ok) {
-      throw new Error('Failed to generate code')
-    }
+    const result = await model.generateContent([
+      { text: SYSTEM_PROMPT },
+      { text: `Generate only the HTML code for: ${prompt}. Do not include any explanations or comments.` }
+    ]);
 
-    const data = await response.json()
-    const code = data.choices[0].message.content.trim()
+    const response = await result.response;
+    const text = response.text();
     
-    // Additional cleanup to remove any markdown code blocks if present
-    return code.replace(/```html/g, '').replace(/```/g, '').trim()
+    // Clean up any markdown code blocks if present
+    return text.replace(/```html/g, '').replace(/```/g, '').trim();
   } catch (error) {
     console.error('Code generation error:', error)
     throw error
