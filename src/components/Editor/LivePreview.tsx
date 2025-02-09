@@ -20,7 +20,7 @@ export default function LivePreview({ code, viewportMode }: LivePreviewProps) {
       const doc = iframe.contentDocument || iframe.contentWindow?.document
       
       if (doc) {
-        // Wrap the generated code with necessary head content
+        // Wrap the generated code with necessary head content and scope JavaScript
         const wrappedCode = `
           <!DOCTYPE html>
           <html>
@@ -29,9 +29,18 @@ export default function LivePreview({ code, viewportMode }: LivePreviewProps) {
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <script src="https://cdn.tailwindcss.com"></script>
               <base target="_blank">
+              <script>
+                // Create a new scope for each update
+                (function() {
+                  'use strict';
+                  window.addEventListener('load', function() {
+                    ${code.match(/<script>(.*?)<\/script>/s)?.[1] || ''}
+                  });
+                })();
+              </script>
             </head>
             <body>
-              ${code}
+              ${code.replace(/<script>.*?<\/script>/s, '')}
             </body>
           </html>
         `
